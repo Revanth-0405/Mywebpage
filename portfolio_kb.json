@@ -1,0 +1,69 @@
+{
+  "name": "Revanth Balaji",
+  "title": "Software Engineer",
+  "bio": "Revanth Balaji is a passionate Software Engineer specializing in backend development, cloud technologies, and AI-powered systems. He has hands-on experience with Python, Flask, AWS, and LLM-based solutions.",
+  "contact": {
+    "email": "revanth@example.com",
+    "linkedin": "linkedin.com/in/revanthbalaji",
+    "github": "github.com/revanthbalaji",
+    "location": "India"
+  },
+  "skills": {
+    "backend": ["Python", "Flask", "REST APIs", "FastAPI"],
+    "database": ["PostgreSQL", "DynamoDB", "Oracle SQL", "SQLAlchemy"],
+    "cloud": ["AWS", "S3", "Lambda", "EC2"],
+    "ai": ["LLMs", "RAG", "Prompt Engineering", "Rasa NLU", "NLP"],
+    "tools": ["Git", "GitHub", "Docker", "Postman"]
+  },
+  "experience": [
+    {
+      "role": "Software Engineer Intern",
+      "company": "Tech Company",
+      "duration": "2024 – Present",
+      "highlights": [
+        "Designed and shipped RESTful APIs integrated with AWS services",
+        "Built automation workflows saving ~60% manual effort",
+        "Worked with DynamoDB, S3, and Lambda in production",
+        "Developed third-party integrations (payments, notifications)"
+      ]
+    }
+  ],
+  "education": {
+    "degree": "B.Tech in Computer Science & Engineering",
+    "institution": "University, India",
+    "duration": "2021 – 2025",
+    "highlights": [
+      "Research on NL2SQL using LLMs and RAG",
+      "Coding club member and open-source contributor"
+    ]
+  },
+  "projects": [
+    {
+      "name": "Educational Chatbot",
+      "tech": ["Python", "Rasa NLU", "NLP"],
+      "description": "NLP-powered student support assistant handling FAQs and campus queries."
+    },
+    {
+      "name": "NL2SQL Research Project",
+      "tech": ["Llama 3.1", "RAG", "Python"],
+      "description": "Converts natural language to SQL queries using LLMs and RAG architecture."
+    },
+    {
+      "name": "E-Commerce Platform",
+      "tech": ["Flask", "PostgreSQL", "REST API"],
+      "description": "Full-stack e-commerce with inventory management and order processing."
+    },
+    {
+      "name": "AI SDR / Lead Qualification System",
+      "tech": ["Flask", "LLM Pipeline", "PostgreSQL"],
+      "description": "Automated lead qualification using LLMs with personalized outreach drafting."
+    }
+  ],
+  "certifications": [
+    "AWS Cloud Practitioner (Amazon Web Services, 2024)",
+    "Python for Data Science (IBM / Coursera, 2023)",
+    "Machine Learning Specialization (DeepLearning.AI, 2024)",
+    "Google Cloud Associate (Google Cloud, 2024)",
+    "REST API Design & Development (Postman Academy, 2023)"
+  ]
+}
