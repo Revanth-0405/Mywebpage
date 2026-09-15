@@ -993,7 +993,7 @@ function sendMsg(){
 }
 function reply(q){
   const t=q.toLowerCase();
-  if(/who|about|introduce|revanth|tell/.test(t))return `${KB.bio}\n\nCurrently pursuing B.Tech (CSE) and actively seeking opportunities in backend and AI engineering.`;
+  if(/who|about|introduce|revanth|tell/.test(t))return `${KB.bio}\n\nCompleted B.Tech (CSE) in 2025 and actively seeking opportunities in backend and AI engineering.`;
   if(/skill|tech|know|stack|language/.test(t))return `Revanth's full tech stack:\n\n⚙️ Backend: ${KB.skills.backend.join(', ')}\n🗄️ Database: ${KB.skills.database.join(', ')}\n☁️ Cloud: ${KB.skills.cloud.join(', ')}\n🧠 AI/ML: ${KB.skills.ai.join(', ')}\n🔧 Tools: ${KB.skills.tools.join(', ')}`;
   if(/project|built|build|made/.test(t))return `He's built ${KB.projects.length} featured projects:\n\n`+KB.projects.map(p=>`• **${p.name}** — ${p.desc} [${p.tech.join(', ')}]`).join('\n\n');
   if(/intern|work|experience|job/.test(t))return `As a Software Engineer Intern, Revanth:\n\n• Built production RESTful APIs with AWS integration\n• Automated workflows saving ~60% manual effort\n• Worked with DynamoDB, S3, and Lambda\n• Built third-party payment & notification integrations`;
