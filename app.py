@@ -7,8 +7,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
 import json
 import os
-import smtplib
-from email.mime.text import MIMEText
+import requests
 from datetime import datetime
 
 app = Flask(__name__, static_folder="static", template_folder=".")
@@ -168,35 +167,55 @@ def chat():
 
 
 # ─────────────────────────────────────────────
-# Helper: Send email (configure SMTP in prod)
+# Helper: Send email via Resend (HTTP API — not blocked on Render free tier)
 # ─────────────────────────────────────────────
 
 def _send_email(name, sender_email, subject, message):
-    """Send contact form email. Set env vars before use."""
-    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", 587))
-    smtp_user = os.environ.get("SMTP_USER", "")
-    smtp_pass = os.environ.get("SMTP_PASS", "")
-    to_email  = os.environ.get("CONTACT_TO", smtp_user)
+    """
+    Send a contact-form notification email via Resend's HTTP API.
 
-    if not smtp_user:
-        print("SMTP not configured (SMTP_USER missing) — skipping email send.")
+    Render's free tier blocks outbound SMTP ports (25/465/587), so we send
+    over plain HTTPS instead. Set these env vars on Render:
+      RESEND_API_KEY  - your Resend API key
+      CONTACT_FROM    - verified sender, e.g. "Portfolio <onboarding@resend.dev>"
+                         (or a sender on your own verified domain)
+      CONTACT_TO      - the inbox that should receive messages (your email)
+    """
+    api_key   = os.environ.get("RESEND_API_KEY", "")
+    from_addr = os.environ.get("CONTACT_FROM", "Portfolio <onboarding@resend.dev>")
+    to_addr   = os.environ.get("CONTACT_TO", "")
+
+    if not api_key or not to_addr:
+        print("Resend not configured (RESEND_API_KEY or CONTACT_TO missing) — skipping email send.")
         return False
 
-    body = f"From: {name} <{sender_email}>\n\n{message}"
-    msg = MIMEText(body)
-    msg["Subject"] = f"[Portfolio] {subject}"
-    msg["From"] = smtp_user
-    msg["To"] = to_email
-    msg["Reply-To"] = sender_email
+    html_body = (
+        f"<p><strong>From:</strong> {name} &lt;{sender_email}&gt;</p>"
+        f"<p><strong>Subject:</strong> {subject}</p>"
+        f"<p>{message}</p>"
+    )
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.send_message(msg)
+        res = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": from_addr,
+                "to": [to_addr],
+                "reply_to": sender_email,
+                "subject": f"[Portfolio] {subject}",
+                "html": html_body,
+            },
+            timeout=10,
+        )
+        if res.status_code >= 400:
+            print(f"Resend error {res.status_code}: {res.text}")
+            return False
         return True
-    except Exception as e:
+    except requests.RequestException as e:
         print(f"Email send failed: {e}")
         return False
 
