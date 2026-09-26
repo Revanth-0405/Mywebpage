@@ -104,7 +104,7 @@ CHAT_SYSTEM_PROMPT = (
     f"PORTFOLIO DATA (JSON):\n{json.dumps(PORTFOLIO_KB, indent=2)}"
 )
 
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")  # override via env var if needed; check https://ai.google.dev/gemini-api/docs/rate-limits for current free-tier models
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")  # lite tier tends to have more free-tier headroom than the flagship model; override via env var if needed
 
 
 def _call_gemini(model, api_key, contents):
