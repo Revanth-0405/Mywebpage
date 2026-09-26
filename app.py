@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
 import json
 import os
+import re
 import requests
 from datetime import datetime
 
@@ -48,6 +49,12 @@ def resume():
 # API: Contact Form
 # ─────────────────────────────────────────────
 
+# A pragmatic email format check — not fully RFC-5322 compliant (nothing
+# simple is), but it catches garbage like "asdf" or "not an email" while
+# accepting real-world addresses.
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
 @app.route("/api/contact", methods=["POST"])
 def contact():
     """Receive and process contact form submissions."""
@@ -59,6 +66,12 @@ def contact():
 
     if not all([name, email, subject, message]):
         return jsonify({"success": False, "error": "All fields are required."}), 400
+
+    if not EMAIL_RE.match(email):
+        return jsonify({"success": False, "error": "Please enter a valid email address."}), 400
+
+    if len(name) > 100 or len(subject) > 200 or len(message) > 5000:
+        return jsonify({"success": False, "error": "One of the fields is too long."}), 400
 
     # Log to file (replace with email sending in production)
     log_entry = {
