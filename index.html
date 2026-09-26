@@ -772,22 +772,23 @@ footer{background:var(--bg2);border-top:1px solid rgba(255,255,255,0.04);padding
     <div class="contact-inner">
       <div class="c-info reveal-left">
         <div class="c-item"><div class="c-ico ci1"><i class="fas fa-envelope"></i></div><div><div class="c-lbl">Email</div><div class="c-val">revanthpinnamaneni@gmail.com</div></div></div>
-        <div class="c-item"><div class="c-ico ci2"><i class="fab fa-linkedin"></i></div><div><div class="c-lbl">LinkedIn</div><div class="c-val">linkedin.com/in/revanth-balaji-pinnamaneni-454b822b2/</div></div></div>
-        <div class="c-item"><div class="c-ico ci3"><i class="fab fa-github"></i></div><div><div class="c-lbl">GitHub</div><div class="c-val">github.com/Revanth-0405</div></div></div>
+        <div class="c-item"><div class="c-ico ci2"><i class="fab fa-linkedin"></i></div><div><div class="c-lbl">LinkedIn</div><div class="c-val">linkedin.com/in/revanthbalaji</div></div></div>
+        <div class="c-item"><div class="c-ico ci3"><i class="fab fa-github"></i></div><div><div class="c-lbl">GitHub</div><div class="c-val">github.com/revanthbalaji</div></div></div>
         <div class="c-item"><div class="c-ico ci4"><i class="fas fa-map-marker-alt"></i></div><div><div class="c-lbl">Location</div><div class="c-val">India 🇮🇳</div></div></div>
       </div>
       <div class="contact-form reveal-right">
         <form id="cform" onsubmit="submitForm(event)">
           <div class="form-row">
-            <div class="fg"><label>Name</label><input type="text" placeholder="Your name" required/></div>
-            <div class="fg"><label>Email</label><input type="email" placeholder="you@example.com" required/></div>
+            <div class="fg"><label>Name</label><input id="f-name" type="text" placeholder="Your name" required/></div>
+            <div class="fg"><label>Email</label><input id="f-email" type="email" placeholder="you@example.com" required/></div>
           </div>
-          <div class="fg"><label>Subject</label><input type="text" placeholder="What's it about?" required/></div>
-          <div class="fg"><label>Message</label><textarea rows="5" placeholder="Tell me more…" required></textarea></div>
+          <div class="fg"><label>Subject</label><input id="f-subject" type="text" placeholder="What's it about?" required/></div>
+          <div class="fg"><label>Message</label><textarea id="f-message" rows="5" placeholder="Tell me more…" required></textarea></div>
           <button type="submit" class="btn-glow btn-primary-glow" style="width:100%;justify-content:center;font-size:0.95rem;padding:14px">
             <i class="fas fa-paper-plane"></i> Send Message
           </button>
           <div class="form-status" id="fstatus">✅ Message sent! I'll get back to you shortly.</div>
+          <div class="form-status" id="ferror" style="color:#ff6b6b">⚠️ Something went wrong. Please try again or email me directly.</div>
         </form>
       </div>
     </div>
@@ -954,16 +955,51 @@ const cobs=new IntersectionObserver(entries=>{
 document.querySelectorAll('.stat-num[data-target]').forEach(el=>cobs.observe(el));
 
 /* ── CONTACT FORM ── */
-function submitForm(e){
+// Replace with your actual Render API URL once deployed, e.g.
+// "https://revanth-portfolio-api.onrender.com"
+const API_BASE = "https://mywebpage-n4s6.onrender.com";
+
+async function submitForm(e){
   e.preventDefault();
   const btn=e.target.querySelector('button');
+  const fstatus=document.getElementById('fstatus');
+  const ferror=document.getElementById('ferror');
+  fstatus.style.display='none';
+  ferror.style.display='none';
   btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Sending…';btn.disabled=true;
-  setTimeout(()=>{
-    document.getElementById('fstatus').style.display='block';
+
+  const payload={
+    name:document.getElementById('f-name').value.trim(),
+    email:document.getElementById('f-email').value.trim(),
+    subject:document.getElementById('f-subject').value.trim(),
+    message:document.getElementById('f-message').value.trim()
+  };
+
+  try{
+    const res=await fetch(`${API_BASE}/api/contact`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data=await res.json();
+    if(!res.ok || !data.success) throw new Error(data.error||'Request failed');
+
+    fstatus.style.display='block';
     btn.innerHTML='<i class="fas fa-check"></i> Sent!';
     e.target.reset();
-    setTimeout(()=>{document.getElementById('fstatus').style.display='none';btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';btn.disabled=false},3500);
-  },1300);
+  }catch(err){
+    console.error('Contact form error:',err);
+    ferror.style.display='block';
+    btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';
+    btn.disabled=false;
+    return;
+  }
+
+  setTimeout(()=>{
+    fstatus.style.display='none';
+    btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';
+    btn.disabled=false;
+  },3500);
 }
 
 /* ── CHATBOT ── */
