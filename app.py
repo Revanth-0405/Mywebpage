@@ -85,85 +85,91 @@ def contact():
 
 
 # ─────────────────────────────────────────────
-# API: Chatbot
+# API: Chatbot (Gemini Flash-powered, grounded in portfolio_kb.json)
 # ─────────────────────────────────────────────
+
+CHAT_SYSTEM_PROMPT = (
+    "You are the AI assistant embedded on Revanth Balaji's personal portfolio website. "
+    "You answer visitors' questions about Revanth using ONLY the facts in the JSON data "
+    "below. Speak about him in the third person, in a friendly, concise, professional tone. "
+    "Use short paragraphs or bullet points where that reads better. "
+    "If a question asks something not covered by this data (e.g. his personal opinions, "
+    "unrelated general knowledge, or anything not listed here), say you don't have that "
+    "information and suggest they reach out to Revanth directly via the contact info below. "
+    "Never invent facts, dates, employers, or skills that aren't in the data.\n\n"
+    f"PORTFOLIO DATA (JSON):\n{json.dumps(PORTFOLIO_KB, indent=2)}"
+)
+
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")  # override via env var if needed; check https://ai.google.dev/gemini-api/docs/rate-limits for current free-tier models
+
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    """
-    Simple keyword-based chatbot endpoint.
-    In production, swap the logic here for an LLM API call.
-    """
-    data = request.json
-    question = data.get("question", "").lower().strip()
-    kb = PORTFOLIO_KB
+    """LLM-powered chatbot endpoint (Google Gemini Flash, free tier). Answers are grounded in PORTFOLIO_KB."""
+    data = request.json or {}
+    question = (data.get("question") or "").strip()
+    history = data.get("history") or []  # optional: [{"role": "user"/"assistant", "content": "..."}]
 
-    if any(w in question for w in ["who", "about", "introduce", "revanth", "tell me"]):
-        reply = (
-            f"{kb['bio']}\n\n"
-            f"He's currently completing his {kb['education']['degree']} "
-            f"({kb['education']['duration']}) and seeking opportunities in backend and AI engineering."
+    if not question:
+        return jsonify({"success": False, "error": "Question is required."}), 400
+
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        return jsonify({
+            "success": True,
+            "reply": "The AI assistant isn't fully configured yet — please reach out to Revanth directly using the contact section above!"
+        })
+
+    # Keep only the last few turns to bound context size
+    trimmed_history = history[-8:]
+
+    # Gemini uses "model" instead of "assistant" for the bot's turns
+    contents = [
+        {"role": ("model" if turn.get("role") == "assistant" else "user"),
+         "parts": [{"text": turn.get("content", "")}]}
+        for turn in trimmed_history
+    ]
+    contents.append({"role": "user", "parts": [{"text": question}]})
+
+    try:
+        res = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+            headers={
+                "x-goog-api-key": api_key,
+                "Content-Type": "application/json",
+            },
+            json={
+                "contents": contents,
+                "systemInstruction": {"parts": [{"text": CHAT_SYSTEM_PROMPT}]},
+                "generationConfig": {"maxOutputTokens": 500},
+            },
+            timeout=20,
         )
+        if res.status_code >= 400:
+            print(f"Gemini API error {res.status_code}: {res.text}")
+            return jsonify({
+                "success": True,
+                "reply": "Sorry, I'm having trouble answering right now — please try again in a moment, or use the contact form above."
+            })
 
-    elif any(w in question for w in ["skill", "tech", "know", "language", "stack"]):
-        s = kb["skills"]
-        reply = (
-            f"Revanth's tech stack:\n"
-            f"• Backend: {', '.join(s['backend'])}\n"
-            f"• Database: {', '.join(s['database'])}\n"
-            f"• Cloud: {', '.join(s['cloud'])}\n"
-            f"• AI/ML: {', '.join(s['ai'])}\n"
-            f"• Tools: {', '.join(s['tools'])}"
-        )
+        payload = res.json()
+        candidates = payload.get("candidates") or []
+        reply_text = ""
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            reply_text = "".join(p.get("text", "") for p in parts).strip()
 
-    elif any(w in question for w in ["project", "built", "build", "made", "created"]):
-        projects = "\n\n".join(
-            f"• {p['name']}: {p['description']} [{', '.join(p['tech'])}]"
-            for p in kb["projects"]
-        )
-        reply = f"He has built {len(kb['projects'])} featured projects:\n\n{projects}"
+        if not reply_text:
+            reply_text = "Sorry, I couldn't come up with an answer to that — try rephrasing, or ask about Revanth's skills, projects, or experience."
 
-    elif any(w in question for w in ["intern", "work", "experience", "job", "company"]):
-        exp = kb["experience"][0]
-        bullets = "\n".join(f"• {h}" for h in exp["highlights"])
-        reply = (
-            f"{exp['role']} at {exp['company']} ({exp['duration']}):\n\n{bullets}"
-        )
+        return jsonify({"success": True, "reply": reply_text})
 
-    elif any(w in question for w in ["cert", "certif", "credential"]):
-        certs = "\n".join(f"• {c}" for c in kb["certifications"])
-        reply = f"Revanth holds {len(kb['certifications'])} certifications:\n\n{certs}"
-
-    elif any(w in question for w in ["contact", "email", "reach", "linkedin", "github", "hire"]):
-        c = kb["contact"]
-        reply = (
-            f"You can reach Revanth at:\n"
-            f"📧 {c['email']}\n"
-            f"💼 {c['linkedin']}\n"
-            f"💻 {c['github']}\n"
-            f"📍 {c['location']}"
-        )
-
-    elif any(w in question for w in ["ai", "llm", "rag", "ml", "nlp", "chatbot"]):
-        reply = (
-            "Revanth's AI work includes:\n"
-            "• Educational Chatbot using Rasa NLU & NLP\n"
-            "• NL2SQL research with Llama 3.1 & RAG\n"
-            "• AI SDR Lead Qualification using LLM pipelines\n\n"
-            f"AI skills: {', '.join(kb['skills']['ai'])}"
-        )
-
-    else:
-        reply = (
-            "I can help you learn about Revanth! Try asking about:\n"
-            "• Skills & tech stack\n"
-            "• Projects he's built\n"
-            "• Internship experience\n"
-            "• Certifications\n"
-            "• Contact information"
-        )
-
-    return jsonify({"success": True, "reply": reply})
+    except requests.RequestException as e:
+        print(f"Chatbot request failed: {e}")
+        return jsonify({
+            "success": True,
+            "reply": "Sorry, something went wrong reaching the AI assistant. Please try again shortly."
+        })
 
 
 # ─────────────────────────────────────────────
