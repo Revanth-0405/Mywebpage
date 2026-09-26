@@ -16,7 +16,7 @@ app = Flask(__name__, static_folder="static", template_folder=".")
 # Allow requests from your GitHub Pages site (and localhost while testing).
 # Replace the github.io URL with your actual Pages URL.
 CORS(app, resources={r"/api/*": {"origins": [
-    "https://revanth-0405.github.io/Mywebpage/",
+    "https://revanth-0405.github.io",
     "http://127.0.0.1:5500",
     "http://localhost:5500",
 ]}})
