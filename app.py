@@ -8,7 +8,6 @@ from flask_cors import CORS
 import json
 import os
 import requests
-import time
 from datetime import datetime
 
 app = Flask(__name__, static_folder="static", template_folder=".")
@@ -106,7 +105,6 @@ CHAT_SYSTEM_PROMPT = (
 )
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")  # override via env var if needed; check https://ai.google.dev/gemini-api/docs/rate-limits for current free-tier models
-GEMINI_FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.1-flash-lite")  # tried if the primary model is overloaded (503)
 
 
 def _call_gemini(model, api_key, contents):
@@ -122,7 +120,7 @@ def _call_gemini(model, api_key, contents):
             "systemInstruction": {"parts": [{"text": CHAT_SYSTEM_PROMPT}]},
             "generationConfig": {"maxOutputTokens": 500},
         },
-        timeout=20,
+        timeout=15,
     )
 
 
@@ -154,53 +152,33 @@ def chat():
     ]
     contents.append({"role": "user", "parts": [{"text": question}]})
 
-    # Try the primary model with a couple of quick retries on 503 (overload),
-    # then fall back to a lighter model that's usually less contended.
-    attempts = [
-        (GEMINI_MODEL, 0),
-        (GEMINI_MODEL, 1.5),
-        (GEMINI_FALLBACK_MODEL, 0),
-    ]
+    try:
+        res = _call_gemini(GEMINI_MODEL, api_key, contents)
+    except requests.RequestException as e:
+        print(f"Chatbot request failed: {e}")
+        return jsonify({
+            "success": True,
+            "reply": "Sorry, something went wrong reaching the AI assistant. Please try again shortly."
+        })
 
-    last_error = None
-    for model, delay in attempts:
-        if delay:
-            time.sleep(delay)
-        try:
-            res = _call_gemini(model, api_key, contents)
-        except requests.RequestException as e:
-            print(f"Chatbot request failed ({model}): {e}")
-            last_error = str(e)
-            continue
+    if res.status_code >= 400:
+        print(f"Gemini API error {res.status_code}: {res.text}")
+        return jsonify({
+            "success": True,
+            "reply": "Sorry, I'm having trouble answering right now — please try again in a moment, or use the contact form above."
+        })
 
-        if res.status_code == 503:
-            print(f"Gemini API 503 (overloaded) on {model} — retrying/falling back...")
-            last_error = "503 overloaded"
-            continue
+    payload = res.json()
+    candidates = payload.get("candidates") or []
+    reply_text = ""
+    if candidates:
+        parts = candidates[0].get("content", {}).get("parts", [])
+        reply_text = "".join(p.get("text", "") for p in parts).strip()
 
-        if res.status_code >= 400:
-            print(f"Gemini API error {res.status_code} ({model}): {res.text}")
-            last_error = f"{res.status_code}: {res.text}"
-            continue
+    if not reply_text:
+        reply_text = "Sorry, I couldn't come up with an answer to that — try rephrasing, or ask about Revanth's skills, projects, or experience."
 
-        payload = res.json()
-        candidates = payload.get("candidates") or []
-        reply_text = ""
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            reply_text = "".join(p.get("text", "") for p in parts).strip()
-
-        if not reply_text:
-            reply_text = "Sorry, I couldn't come up with an answer to that — try rephrasing, or ask about Revanth's skills, projects, or experience."
-
-        return jsonify({"success": True, "reply": reply_text})
-
-    # All attempts failed
-    print(f"All Gemini attempts failed. Last error: {last_error}")
-    return jsonify({
-        "success": True,
-        "reply": "Sorry, I'm having trouble answering right now — please try again in a moment, or use the contact form above."
-    })
+    return jsonify({"success": True, "reply": reply_text})
 
 
 
