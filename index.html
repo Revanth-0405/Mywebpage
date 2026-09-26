@@ -989,6 +989,7 @@ async function submitForm(e){
     e.target.reset();
   }catch(err){
     console.error('Contact form error:',err);
+    ferror.textContent = '⚠️ ' + (err.message || "Something went wrong. Please try again or email me directly.");
     ferror.style.display='block';
     btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Message';
     btn.disabled=false;
