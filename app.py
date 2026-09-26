@@ -4,6 +4,7 @@ Flask application serving the portfolio and handling API endpoints.
 """
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask_cors import CORS
 import json
 import os
 import smtplib
@@ -12,10 +13,19 @@ from datetime import datetime
 
 app = Flask(__name__, static_folder="static", template_folder=".")
 
+# Allow requests from your GitHub Pages site (and localhost while testing).
+# Replace the github.io URL with your actual Pages URL.
+CORS(app, resources={r"/api/*": {"origins": [
+    "https://revanth-0405.github.io/Mywebpage/",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+]}})
+
 # ─────────────────────────────────────────────
 # Portfolio Knowledge Base (used by chatbot)
 # ─────────────────────────────────────────────
-with open("data/portfolio_kb.json", "r") as f:
+KB_PATH = os.path.join(os.path.dirname(__file__), "portfolio_kb.json")
+with open(KB_PATH, "r") as f:
     PORTFOLIO_KB = json.load(f)
 
 
@@ -60,7 +70,7 @@ def contact():
         "message": message,
     }
 
-    log_path = "data/messages.json"
+    log_path = os.path.join(os.path.dirname(__file__), "data", "messages.json")
     messages = []
     if os.path.exists(log_path):
         with open(log_path, "r") as f:
@@ -69,10 +79,10 @@ def contact():
     with open(log_path, "w") as f:
         json.dump(messages, f, indent=2)
 
-    # ── Optional: send email via SMTP ──────────
-    # _send_email(name, email, subject, message)
+    # Send an email notification (configured via env vars on Render)
+    email_sent = _send_email(name, email, subject, message)
 
-    return jsonify({"success": True, "message": "Message received!"}), 200
+    return jsonify({"success": True, "message": "Message received!", "email_sent": email_sent}), 200
 
 
 # ─────────────────────────────────────────────
@@ -170,27 +180,33 @@ def _send_email(name, sender_email, subject, message):
     to_email  = os.environ.get("CONTACT_TO", smtp_user)
 
     if not smtp_user:
-        return  # Skip if not configured
+        print("SMTP not configured (SMTP_USER missing) — skipping email send.")
+        return False
 
     body = f"From: {name} <{sender_email}>\n\n{message}"
     msg = MIMEText(body)
     msg["Subject"] = f"[Portfolio] {subject}"
     msg["From"] = smtp_user
     msg["To"] = to_email
+    msg["Reply-To"] = sender_email
 
     try:
         with smtplib.SMTP(smtp_host, smtp_port) as server:
             server.starttls()
             server.login(smtp_user, smtp_pass)
             server.send_message(msg)
+        return True
     except Exception as e:
         print(f"Email send failed: {e}")
+        return False
 
 
 # ─────────────────────────────────────────────
 # RUN
 # ─────────────────────────────────────────────
 
+os.makedirs(os.path.join(os.path.dirname(__file__), "data"), exist_ok=True)
+
 if __name__ == "__main__":
-    os.makedirs("data", exist_ok=True)
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=True, host="0.0.0.0", port=port)
