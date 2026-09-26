@@ -1002,20 +1002,10 @@ async function submitForm(e){
   },3500);
 }
 
-/* ── CHATBOT ── */
-const KB={
-  bio:"Revanth Balaji is a Software Engineer specializing in backend development, cloud infrastructure, and AI-powered systems. He works with Python, Flask, AWS, and cutting-edge LLM technology.",
-  contact:{email:"revanthpinnamaneni@gmail.com",linkedin:"linkedin.com/in/revanthbalaji",github:"github.com/revanthbalaji",location:"India"},
-  skills:{backend:["Python","Flask","REST APIs","FastAPI"],database:["PostgreSQL","DynamoDB","Oracle SQL"],cloud:["AWS","S3","Lambda","EC2"],ai:["LLMs","RAG","Prompt Engineering","Rasa NLU","NLP"],tools:["Git","GitHub","Docker","Postman"]},
-  projects:[
-    {name:"Educational Chatbot",tech:["Python","Rasa NLU","NLP"],desc:"NLP-powered student support assistant."},
-    {name:"NL2SQL Research",tech:["Llama 3.1","RAG","Python"],desc:"Natural language to SQL using LLMs and RAG."},
-    {name:"E-Commerce Platform",tech:["Flask","PostgreSQL","REST API"],desc:"Full-stack with inventory & order management."},
-    {name:"AI SDR System",tech:["Flask","LLM Pipeline","PostgreSQL"],desc:"Automated lead qualification using LLMs."}
-  ],
-  certs:["AWS Cloud Practitioner","Python for Data Science (IBM)","Machine Learning Specialization (DeepLearning.AI)","Google Cloud Associate","REST API Design (Postman)"]
-};
+/* ── CHATBOT (calls the Claude-powered /api/chat backend) ── */
 let chatOpen=false,chatInited=false;
+let chatHistory=[]; // [{role:'user'|'assistant', content:'...'}]
+
 function toggleChat(){
   chatOpen=!chatOpen;
   document.getElementById('chat-win').classList.toggle('open',chatOpen);
@@ -1023,23 +1013,35 @@ function toggleChat(){
   if(chatOpen&&!chatInited){chatInited=true;addBot("Hey! 👋 I'm Revanth's AI assistant. Ask me anything about his skills, projects, experience, or how to reach him!")}
 }
 function sendSugg(el){document.getElementById('chat-input').value=el.textContent;document.getElementById('chat-sugg').style.display='none';sendMsg()}
-function sendMsg(){
+
+async function sendMsg(){
   const inp=document.getElementById('chat-input'),txt=inp.value.trim();
-  if(!txt)return;addUser(txt);inp.value='';
+  if(!txt)return;
+  addUser(txt);inp.value='';
   showTyping();
-  setTimeout(()=>{removeTyping();addBot(reply(txt))},850+Math.random()*400);
-}
-function reply(q){
-  const t=q.toLowerCase();
-  if(/who|about|introduce|revanth|tell/.test(t))return `${KB.bio}\n\nCompleted B.Tech (CSE) in 2025 and actively seeking opportunities in backend and AI engineering.`;
-  if(/skill|tech|know|stack|language/.test(t))return `Revanth's full tech stack:\n\n⚙️ Backend: ${KB.skills.backend.join(', ')}\n🗄️ Database: ${KB.skills.database.join(', ')}\n☁️ Cloud: ${KB.skills.cloud.join(', ')}\n🧠 AI/ML: ${KB.skills.ai.join(', ')}\n🔧 Tools: ${KB.skills.tools.join(', ')}`;
-  if(/project|built|build|made/.test(t))return `He's built ${KB.projects.length} featured projects:\n\n`+KB.projects.map(p=>`• **${p.name}** — ${p.desc} [${p.tech.join(', ')}]`).join('\n\n');
-  if(/intern|work|experience|job/.test(t))return `As a Software Engineer Intern, Revanth:\n\n• Built production RESTful APIs with AWS integration\n• Automated workflows saving ~60% manual effort\n• Worked with DynamoDB, S3, and Lambda\n• Built third-party payment & notification integrations`;
-  if(/ai|llm|rag|machine|nlp|chatbot|nl2sql/.test(t))return `Revanth's AI projects:\n\n🤖 Educational Chatbot (Rasa NLU, NLP)\n🔬 NL2SQL Research (Llama 3.1, RAG)\n🎯 AI SDR Lead Qualification (LLM Pipeline)\n\nAI skills: ${KB.skills.ai.join(', ')}`;
-  if(/cert|certif|credential/.test(t))return `His ${KB.certs.length} certifications:\n\n`+KB.certs.map(c=>`• ${c}`).join('\n');
-  if(/contact|email|reach|linkedin|github|hire/.test(t))return `Reach Revanth at:\n\n📧 ${KB.contact.email}\n💼 ${KB.contact.linkedin}\n💻 ${KB.contact.github}\n📍 ${KB.contact.location}`;
-  if(/resume|cv|download/.test(t))return `Download Revanth's resume from the Resume section above or click the Download button!`;
-  return `I can help you learn about Revanth! Try asking:\n\n• His tech stack & skills\n• Projects he's built\n• Internship experience\n• Certifications\n• Contact information`;
+
+  try{
+    const res=await fetch(`${API_BASE}/api/chat`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:txt,history:chatHistory})
+    });
+    const data=await res.json();
+    removeTyping();
+
+    const answer = (data && data.success && data.reply)
+      ? data.reply
+      : "Sorry, something went wrong — please try again or use the contact form above.";
+
+    addBot(answer);
+    chatHistory.push({role:'user',content:txt});
+    chatHistory.push({role:'assistant',content:answer});
+    if(chatHistory.length>16) chatHistory=chatHistory.slice(-16); // bound growth
+  }catch(err){
+    console.error('Chat error:',err);
+    removeTyping();
+    addBot("Sorry, I couldn't reach the AI assistant right now. Please try again in a moment.");
+  }
 }
 function addUser(txt){
   const now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
@@ -1070,4 +1072,3 @@ if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){
 </script>
 </body>
 </html>
-
