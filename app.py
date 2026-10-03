@@ -119,6 +119,17 @@ CHAT_SYSTEM_PROMPT = (
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")  # lite tier tends to have more free-tier headroom than the flagship model; override via env var if needed
 
+# Shown to visitors whenever the chatbot itself fails (timeout, API error, etc).
+# Falls back to the public contact email if CONTACT_TO isn't set.
+CONTACT_EMAIL_FOR_FALLBACK = os.environ.get("CONTACT_TO") or "revanthpinnamaneni@gmail.com"
+
+
+def _chat_fallback_reply():
+    return (
+        f"Sorry, something went wrong on my end and I couldn't answer that. "
+        f"Please try again shortly, or reach out to Revanth directly at {CONTACT_EMAIL_FOR_FALLBACK}."
+    )
+
 
 def _call_gemini(model, api_key, contents):
     """Single call to Gemini's generateContent endpoint. Returns the requests.Response."""
@@ -133,7 +144,7 @@ def _call_gemini(model, api_key, contents):
             "systemInstruction": {"parts": [{"text": CHAT_SYSTEM_PROMPT}]},
             "generationConfig": {"maxOutputTokens": 500},
         },
-        timeout=15,
+        timeout=25,
     )
 
 
@@ -169,17 +180,11 @@ def chat():
         res = _call_gemini(GEMINI_MODEL, api_key, contents)
     except requests.RequestException as e:
         print(f"Chatbot request failed: {e}")
-        return jsonify({
-            "success": True,
-            "reply": "Sorry, something went wrong reaching the AI assistant. Please try again shortly."
-        })
+        return jsonify({"success": True, "reply": _chat_fallback_reply()})
 
     if res.status_code >= 400:
         print(f"Gemini API error {res.status_code}: {res.text}")
-        return jsonify({
-            "success": True,
-            "reply": "Sorry, I'm having trouble answering right now — please try again in a moment, or use the contact form above."
-        })
+        return jsonify({"success": True, "reply": _chat_fallback_reply()})
 
     payload = res.json()
     candidates = payload.get("candidates") or []
