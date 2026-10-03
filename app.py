@@ -120,8 +120,10 @@ CHAT_SYSTEM_PROMPT = (
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")  # lite tier tends to have more free-tier headroom than the flagship model; override via env var if needed
 
 # Shown to visitors whenever the chatbot itself fails (timeout, API error, etc).
-# Falls back to the public contact email if CONTACT_TO isn't set.
-CONTACT_EMAIL_FOR_FALLBACK = os.environ.get("CONTACT_TO") or "revanthpinnamaneni@gmail.com"
+# This is intentionally your public-facing email, NOT the CONTACT_TO env var
+# (that one is the private inbox Resend delivers contact-form messages to,
+# which may be a different address used only for that sandbox restriction).
+CONTACT_EMAIL_FOR_FALLBACK = os.environ.get("CHATBOT_FALLBACK_EMAIL") or "revanthpinnamaneni@gmail.com"
 
 
 def _chat_fallback_reply():
