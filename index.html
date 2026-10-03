@@ -1051,7 +1051,7 @@ async function sendMsg(){
 function addUser(txt){
   const now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   const m=document.createElement('div');m.className='c-msg user';
-  m.innerHTML=`<div><div class="c-bubble">${esc(txt)}</div><div class="c-time" style="text-align:right">${now}</div></div>`;
+  m.innerHTML=`<div class="chat-ava" style="width:28px;height:28px;font-size:0.75rem;flex-shrink:0"><i class="fas fa-user"></i></div><div><div class="c-bubble">${esc(txt)}</div><div class="c-time" style="text-align:right">${now}</div></div>`;
   appendMsg(m);
 }
 function formatBotMarkdown(raw){
